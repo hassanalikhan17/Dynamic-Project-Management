@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Project & Task Management</title>
+  <script>
+  // ✅ Check login before showing dashboard
+  if (localStorage.getItem("isLoggedIn") !== "true") {
+    window.location.href = "index.html"; // redirect back
+  }
+</script>
+
+
+  <!-- AOS Animation CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      /* ✨ Animated Gradient Background */
+      background: linear-gradient(270deg, #667eea, #764ba2, #ff6ec4, #48c6ef);
+      background-size: 800% 800%;
+      animation: gradientShift 18s ease infinite;
+      background-attachment: fixed;
+      color: #333;
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    header {
+      background: rgba(79, 70, 229, 0.9);
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.8rem;
+      font-weight: bold;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    }
+    .container {
+      padding: 2rem;
+      max-width: 1100px;
+      margin: auto;
+    }
+    .card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    h2 { margin-top: 0; color: #4f46e5; }
+    input, textarea, select, button {
+      width: 100%;
+      padding: 0.6rem;
+      margin: 0.3rem 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+    button {
+      background: #4f46e5;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: 0.2s;
+      border-radius: 6px;
+    }
+    button:hover { background: #3730a3; }
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-top: 0.8rem;
+      border: 6px solid;
+      border-style: solid;
+      border-image: linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet) 1;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fefefe;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    table th, table td {
+      border: 1px solid #cbd5e1;
+      padding: 10px;
+      text-align: left;
+    }
+    table th {
+      background: #e0e7ff;
+      color: #1e3a8a;
+    }
+    table tbody tr:nth-child(even) {
+      background: #f9fafb;
+    }
+    table tbody tr:hover {
+      background: #dbeafe;
+    }
+
+    .delete-btn { background: #ef4444; color: white; }
+    .delete-btn:hover { background: #b91c1c; }
+    .edit-btn { background: #3b82f6; color: white; }
+    .edit-btn:hover { background: #1e40af; }
+    .progress-bar {
+      background: #e5e7eb;
+      border-radius: 6px;
+      height: 22px;
+      margin-top: 10px;
+    }
+    .progress {
+      background: #22c55e;
+      height: 100%;
+      border-radius: 6px;
+      text-align: center;
+      color: white;
+      font-size: 0.8rem;
+      line-height: 22px;
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 1rem;
+    }
+    .filters select, .filters input {
+      flex: 1;
+      min-width: 150px;
+    }
+    .preview { margin-top: 10px; }
+    video, img {
+      max-width: 100%;
+      border-radius: 8px;
+      margin-top: 5px;
+    }
+    iframe {
+      width: 100%;
+      height: 300px;
+      border: none;
+      margin-top: 5px;
+    }
+    tr.dragging { opacity: 0.5; background: #dbeafe; }
+    tr.drop-target { background: #bbf7d0 !important; }
+
+    footer {
+      background: rgba(0,0,0,0.8);
+      color: white;
+      text-align: center;
+      padding: 1rem;
+      margin-top: 2rem;
+    }
+    footer a {
+      color: #60a5fa;
+      text-decoration: none;
+    }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <header data-aos="fade-down">📊 Project & Task Management</header>
+
+  <div class="container">
+
+    <!-- Stats -->
+    <div class="card" data-aos="zoom-in">
+      <h2>Dashboard</h2>
+      <p>Total Projects: <span id="totalProjects">0</span></p>
+      <p>Total Tasks: <span id="totalTasks">0</span></p>
+    </div>
+
+    <!-- Filters & Search -->
+    <div class="card filters" data-aos="fade-up">
+      <select id="filterPriority" onchange="renderProjects()"> 
+        <option value="">Filter by Priority</option>
+        <option value="High">High</option>
+        <option value="Medium">Medium</option>
+        <option value="Low">Low</option>
+      </select>
+      <select id="filterStatus" onchange="renderProjects()">
+        <option value="">Filter by Status</option>
+        <option value="To-Do">To-Do</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Completed">Completed</option>
+      </select>
+      <select id="sortBy" onchange="renderProjects()">
+        <option value="">Sort by</option>
+        <option value="priority">Priority</option>
+        <option value="deadline">Deadline</option>
+        <option value="status">Status</option>
+      </select>
+      <input type="text" id="searchBox" placeholder="Search tasks or projects..." onkeyup="renderProjects()">
+    </div>
+
+    <!-- Create Project -->
+    <div class="card" data-aos="fade-up">
+      <h2>Create Project</h2>
+      <input type="text" id="projectName" placeholder="Project Name">
+      <input type="file" id="projectFile" />
+      <button onclick="addProject()">Add Project</button>
+    </div>
+
+    <!-- Projects List -->
+    <div id="projectsContainer"></div>
+  </div>
+
+  <!-- AOS Animation Script -->
+  <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+  <script>AOS.init();</script>
+
+  <!-- 🔹 Firebase Firestore Script -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } 
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+    // 🔹 Replace with your Firebase config
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const projectsRef = collection(db, "projects");
+
+    let projects = [];
+
+    async function addProject() {
+      const name = document.getElementById("projectName").value.trim();
+      if (!name) return alert("Enter project name!");
+      await addDoc(projectsRef, { name, tasks: [] });
+      document.getElementById("projectName").value = "";
+    }
+
+    async function addTask(pIndex, projectId) {
+      const title = document.getElementById(`taskTitle-${pIndex}`).value.trim();
+      const desc = document.getElementById(`taskDesc-${pIndex}`).value.trim();
+      const priority = document.getElementById(`taskPriority-${pIndex}`).value;
+      const status = document.getElementById(`taskStatus-${pIndex}`).value;
+      const deadline = document.getElementById(`taskDeadline-${pIndex}`).value.trim();
+      if (!title) return alert("Task title is required!");
+      let proj = projects[pIndex];
+      proj.tasks.push({ title, desc, priority, status, deadline });
+      await updateDoc(doc(db, "projects", projectId), { tasks: proj.tasks });
+    }
+
+    async function deleteTask(pIndex, tIndex, projectId) {
+      let proj = projects[pIndex];
+      proj.tasks.splice(tIndex, 1);
+      await updateDoc(doc(db, "projects", projectId), { tasks: proj.tasks });
+    }
+
+    async function deleteProject(projectId) {
+      if (confirm("Delete this project?")) {
+        await deleteDoc(doc(db, "projects", projectId));
+      }
+    }
+
+    function renderProjects() {
+      const container = document.getElementById("projectsContainer");
+      container.innerHTML = "";
+      let totalProjects = 0, totalTasks = 0;
+      const filterPriority = document.getElementById("filterPriority").value;
+      const filterStatus = document.getElementById("filterStatus").value;
+      const sortBy = document.getElementById("sortBy").value;
+      const search = document.getElementById("searchBox").value.toLowerCase();
+
+      projects.forEach((project, index) => {
+        let tasks = [...project.tasks];
+        const projectMatches = project.name.toLowerCase().includes(search);
+        if (!projectMatches) {
+          tasks = tasks.filter(t =>
+            t.title.toLowerCase().includes(search) ||
+            t.desc.toLowerCase().includes(search) ||
+            (t.deadline || "").toLowerCase().includes(search)
+          );
+        }
+        if (filterPriority) tasks = tasks.filter(t => t.priority === filterPriority);
+        if (filterStatus) tasks = tasks.filter(t => t.status === filterStatus);
+        if (sortBy === "priority") {
+          const order = { High: 1, Medium: 2, Low: 3 };
+          tasks.sort((a,b) => order[a.priority] - order[b.priority]);
+        } else if (sortBy === "deadline") {
+          tasks.sort((a,b) => (a.deadline || "").localeCompare(b.deadline || ""));
+        } else if (sortBy === "status") {
+          const order = { "To-Do": 1, "In Progress": 2, "Completed": 3 };
+          tasks.sort((a,b) => order[a.status] - order[b.status]);
+        }
+
+        if (projectMatches || tasks.length > 0 || search === "") {
+          totalProjects++;
+          totalTasks += tasks.length;
+          const total = project.tasks.length;
+          const completed = project.tasks.filter(t => t.status === "Completed").length;
+          const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+          let div = document.createElement("div");
+          div.className = "card project";
+          div.innerHTML = `
+            <h2>${project.name}</h2>
+            <button class="delete-btn" onclick="deleteProject('${project.id}')">Delete Project</button>
+            <div class="progress-bar"><div class="progress" style="width:${percent}%">${percent}%</div></div>
+            <div>
+              <input id="taskTitle-${index}" placeholder="Task Title">
+              <textarea id="taskDesc-${index}" placeholder="Task Description"></textarea>
+              <select id="taskPriority-${index}">
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+              <select id="taskStatus-${index}">
+                <option value="To-Do">To-Do</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+              </select>
+              <input type="text" id="taskDeadline-${index}" placeholder="Deadline (YYYY-MM-DD)">
+              <button onclick="addTask(${index}, '${project.id}')">Add Task</button>
+            </div>
+            <h3>Tasks</h3>
+            <table>
+              <thead><tr><th>Title</th><th>Description</th><th>Priority</th><th>Status</th><th>Deadline</th><th>Action</th></tr></thead>
+              <tbody>
+                ${tasks.map((t, tIndex) => `
+                  <tr>
+                    <td>${t.title}</td>
+                    <td>${t.desc}</td>
+                    <td>${t.priority}</td>
+                    <td>${t.status}</td>
+                    <td>${t.deadline || "Not set"}</td>
+                    <td>
+                      <button class="delete-btn" onclick="deleteTask(${index}, ${tIndex}, '${project.id}')">Delete</button>
+                    </td>
+                  </tr>`).join("")}
+              </tbody>
+            </table>
+          `;
+          container.appendChild(div);
+        }
+      });
+
+      document.getElementById("totalProjects").innerText = totalProjects;
+      document.getElementById("totalTasks").innerText = totalTasks;
+    }
+
+    onSnapshot(projectsRef, snap => {
+      projects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderProjects();
+    });
+
+    window.addProject = addProject;
+    window.addTask = addTask;
+    window.deleteTask = deleteTask;
+    window.deleteProject = deleteProject;
+  </script>
+
+  <!-- keep your info section + footer here (unchanged) -->
+   <!-- Extra Section for Dashboard Info -->
+<section style="padding:40px; background:white; margin-top:40px; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.1);">
+  <h2 style="text-align:center; color:#004aad; font-size:26px; margin-bottom:20px;">
+    🌟 Why Use This Dashboard?
+  </h2>
+  <p style="text-align:center; max-width:800px; margin:auto; font-size:16px; line-height:1.6; color:#444;">
+    This Project & Task Management Dashboard helps you stay organized and productive. 
+    Track your projects, manage tasks, and stay ahead of deadlines — all in one place.
+  </p>
+
+  <div style="display:flex; flex-wrap:wrap; justify-content:center; margin-top:30px; gap:20px;">
+    <div style="flex:1; min-width:250px; max-width:300px; background:#f9fbff; padding:20px; border-radius:10px; text-align:center; transition:transform 0.3s; cursor:pointer;"
+         onmouseover="this.style.transform='translateY(-8px)';" onmouseout="this.style.transform='translateY(0)'">
+      <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Team Work" style="width:80px; margin-bottom:15px;">
+      <h3 style="color:#004aad;">Team Collaboration</h3>
+      <p style="font-size:14px; color:#555;">Work together effectively with a clear overview of tasks and responsibilities.</p>
+    </div>
+
+    <div style="flex:1; min-width:250px; max-width:300px; background:#f9fbff; padding:20px; border-radius:10px; text-align:center; transition:transform 0.3s; cursor:pointer;"
+         onmouseover="this.style.transform='translateY(-8px)';" onmouseout="this.style.transform='translateY(0)'">
+      <img src="https://cdn-icons-png.flaticon.com/512/2830/2830307.png" alt="Productivity" style="width:80px; margin-bottom:15px;">
+      <h3 style="color:#004aad;">Boost Productivity</h3>
+      <p style="font-size:14px; color:#555;">Stay focused and achieve goals faster with organized project tracking.</p>
+    </div>
+
+    <div style="flex:1; min-width:250px; max-width:300px; background:#f9fbff; padding:20px; border-radius:10px; text-align:center; transition:transform 0.3s; cursor:pointer;"
+         onmouseover="this.style.transform='translateY(-8px)';" onmouseout="this.style.transform='translateY(0)'">
+      <img src="https://cdn-icons-png.flaticon.com/512/2920/2920237.png" alt="Analytics" style="width:80px; margin-bottom:15px;">
+      <h3 style="color:#004aad;">Smart Analytics</h3>
+      <p style="font-size:14px; color:#555;">Track progress with simple yet powerful visual insights for your projects.</p>
+    </div>
+  </div>
+</section>
+<button id="logoutBtn">Logout</button>
+
+
+<footer style="background:#0f172a; color:#e5e7eb; padding:40px 20px; text-align:center; margin-top:40px;">
+  <div style="max-width:1100px; margin:auto; display:flex; flex-wrap:wrap; justify-content:space-between; gap:30px;">
+
+    <!-- About -->
+    <div style="flex:1; min-width:220px; text-align:left;">
+      <h3 style="color:#38bdf8; margin-bottom:15px;">About Dashboard</h3>
+      <p style="font-size:14px; line-height:1.6; color:#cbd5e1;">
+        A professional Project & Task Management Dashboard to help you stay 
+        organized, track progress, and achieve goals efficiently.
+      </p>
+    </div>
+
+    <!-- Quick Links -->
+    <div style="flex:1; min-width:220px; text-align:left;">
+      <h3 style="color:#38bdf8; margin-bottom:15px;">Quick Links</h3>
+      <ul style="list-style:none; padding:0; font-size:14px; line-height:1.8;">
+        <li><a href="#" style="color:#cbd5e1; text-decoration:none;">Home</a></li>
+        <li><a href="#" style="color:#cbd5e1; text-decoration:none;">Projects</a></li>
+        <li><a href="#" style="color:#cbd5e1; text-decoration:none;">Tasks</a></li>
+        <li><a href="#" style="color:#cbd5e1; text-decoration:none;">Contact</a></li>
+      </ul>
+    </div>
+
+    <!-- Contact -->
+    <div style="flex:1; min-width:220px; text-align:left;">
+      <h3 style="color:#38bdf8; margin-bottom:15px;">Contact</h3>
+      <p style="font-size:14px; color:#cbd5e1;">📍 Rawalpindi, Pakistan</p>
+      <p style="font-size:14px; color:#cbd5e1;">📧 support@dashboard.com</p>
+      <p style="font-size:14px; color:#cbd5e1;">📞 +92 300 1234567</p>
+    </div>
+  </div>
+
+  <hr style="border:0; border-top:1px solid #334155; margin:25px 0;">
+
+  <p style="font-size:13px; color:#94a3b8;">&copy; 2025 Project & Task Management Dashboard. All Rights Reserved.</p>
+</footer>
+
+
+<script>
+  document.getElementById("logoutBtn").addEventListener("click", () => {
+    // Clear login session
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("userEmail");
+
+    // Redirect to login (index.html)
+    window.location.href = "index.html";
+  });
+</script>
+
+
+
+</body>
+</html>
